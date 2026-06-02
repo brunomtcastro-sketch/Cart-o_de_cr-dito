@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Gastos</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+  :root{
+    --bg:#f5f3ef;--surface:#fff;--border:#e2ded7;--text:#1a1814;
+    --muted:#8a8680;--accent:#2d5a3d;--danger:#8b2020;--warning:#7a5c00;
+    --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:90px;}
+
+  header{background:var(--text);color:#f5f3ef;padding:18px 20px 0;position:sticky;top:0;z-index:100;}
+  .header-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+  .header-title{font-size:10px;font-weight:400;letter-spacing:.12em;text-transform:uppercase;color:#a0a09a;margin-bottom:2px;}
+  .header-month{font-family:var(--mono);font-size:17px;font-weight:500;}
+  .htr{text-align:right;}
+  .htrl{font-size:10px;color:#a0a09a;text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px;}
+  .htrv{font-family:var(--mono);font-size:21px;font-weight:500;}
+  .htrv.ok{color:#6dbf8a;}.htrv.warn{color:#f5c842;}.htrv.over{color:#e8706a;}
+  .gbar-wrap{background:rgba(255,255,255,.15);border-radius:3px;height:4px;overflow:hidden;}
+  .gbar-fill{height:4px;border-radius:3px;background:#6dbf8a;transition:width .4s,background .3s;}
+  .gbar-fill.warn{background:#f5c842;}.gbar-fill.over{background:#e8706a;}
+  .gbar-lbl{display:flex;justify-content:space-between;font-size:10px;color:#a0a09a;margin-top:4px;font-family:var(--mono);padding-bottom:10px;}
+  .tabs{display:flex;padding:0 20px;}
+  .tab{flex:1;padding:9px 0 11px;text-align:center;font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#a0a09a;cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;}
+  .tab.active{color:#f5f3ef;border-bottom-color:#f5f3ef;}
+
+  .page{display:none;}.page.active{display:block;}
+  main{padding:16px;}
+  .slabel{font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:18px 0 10px;}
+  .slabel:first-child{margin-top:0;}
+
+  .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .si-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;}
+  .si-val{font-family:var(--mono);font-size:15px;font-weight:500;}
+
+  .cat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;}
+  .cat-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .cat-name{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;}
+  .cat-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;}
+  .cat-amounts{text-align:right;}
+  .cat-spent{font-family:var(--mono);font-size:14px;font-weight:500;}
+  .cat-limit{font-family:var(--mono);font-size:10px;color:var(--muted);}
+  .bar-wrap{background:var(--bg);border-radius:3px;height:4px;overflow:hidden;margin-bottom:6px;}
+  .bar-fill{height:4px;border-radius:3px;transition:width .4s;}
+  .cat-rem{font-size:11px;font-family:var(--mono);}
+  .cat-rem.ok{color:var(--accent);}.cat-rem.warn{color:var(--warning);}.cat-rem.danger{color:var(--danger);}
+  .etoggle{font-size:11px;color:var(--muted);cursor:pointer;margin-top:6px;display:inline-block;text-decoration:underline;text-underline-offset:2px;user-select:none;}
+  .elist{margin-top:8px;border-top:1px solid var(--border);padding-top:8px;display:none;}
+  .elist.open{display:block;}
+  .eitem{display:flex;align-items:center;padding:5px 0;border-bottom:1px solid var(--bg);font-size:12px;}
+  .eitem:last-child{border-bottom:none;}
+  .edesc{flex:1;color:var(--text);}
+  .edate{color:var(--muted);font-size:11px;margin:0 6px;white-space:nowrap;}
+  .ebadge{font-size:10px;background:#e6f1fb;color:#0C447C;border-radius:4px;padding:1px 5px;margin-right:4px;white-space:nowrap;}
+  .eval{font-family:var(--mono);font-size:12px;font-weight:500;white-space:nowrap;}
+  .edel{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 0 0 8px;line-height:1;}
+  .edel:hover{color:var(--danger);}
+
+  .fechar-btn{width:100%;padding:14px;background:var(--text);color:#f5f3ef;border:none;border-radius:12px;font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer;margin-top:4px;}
+  .fechar-btn:active{opacity:.8;}
+  .fechar-hint{font-size:11px;color:var(--muted);text-align:center;margin-top:8px;line-height:1.5;}
+
+  .fab{position:fixed;bottom:24px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--text);color:#f5f3ef;border:none;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.18);z-index:200;transition:transform .15s;}
+  .fab:active{transform:scale(.93);}.fab.hidden{display:none;}
+
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:none;align-items:flex-end;}
+  .overlay.open{display:flex;}
+  .modal{background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;animation:su .22s ease;max-height:90vh;overflow-y:auto;}
+  @keyframes su{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .modal-title{font-size:14px;font-weight:500;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;}
+  .mclose{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:5px;}
+  .field input,.field select{width:100%;height:44px;border:1px solid var(--border);border-radius:8px;padding:0 12px;font-family:var(--sans);font-size:15px;color:var(--text);background:var(--bg);appearance:none;-webkit-appearance:none;}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--text);}
+  .pgto-toggle{display:flex;gap:8px;margin-bottom:14px;}
+  .pgto-btn{flex:1;height:40px;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-family:var(--sans);font-size:13px;color:var(--muted);cursor:pointer;transition:all .15s;}
+  .pgto-btn.active{background:var(--text);color:#f5f3ef;border-color:var(--text);}
+  .parc-fields{display:none;}
+  .parc-fields.open{display:block;}
+  .parc-preview{font-size:12px;color:var(--accent);font-family:var(--mono);margin-top:-8px;margin-bottom:14px;min-height:16px;}
+  .btn-ok{width:100%;height:48px;border-radius:10px;background:var(--text);color:#f5f3ef;border:none;font-family:var(--sans);font-size:15px;font-weight:500;cursor:pointer;margin-top:4px;}
+  .btn-ok:active{opacity:.8;}
+  .btn-ok:disabled{opacity:.5;cursor:not-allowed;}
+
+  .parc-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden;}
+  .parc-row{display:flex;align-items:center;padding:11px 16px;border-bottom:1px solid var(--bg);gap:10px;font-size:13px;}
+  .parc-row:last-child{border-bottom:none;}
+  .parc-sub{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:1px;}
+  .parc-val{font-family:var(--mono);font-size:13px;font-weight:500;margin:0 6px;white-space:nowrap;}
+  .pdel{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0;line-height:1;}
+  .pdel:hover{color:var(--danger);}
+  .add-btn{width:100%;padding:12px;border:1px dashed var(--border);border-radius:12px;background:none;font-family:var(--sans);font-size:13px;color:var(--muted);cursor:pointer;transition:border-color .15s,color .15s;margin-bottom:8px;}
+  .add-btn:hover{border-color:var(--text);color:var(--text);}
+
+  .assin-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden;}
+  .assin-row{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--bg);gap:12px;}
+  .assin-row:last-child{border-bottom:none;}
+  .atoggle{width:36px;height:20px;border-radius:10px;border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;}
+  .atoggle.on{background:var(--text);}.atoggle.off{background:var(--border);}
+  .atoggle::after{content:'';position:absolute;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s;}
+  .atoggle.on::after{left:18px;}.atoggle.off::after{left:2px;}
+  .assin-name{font-size:13px;font-weight:500;}
+  .assin-name.off{color:var(--muted);text-decoration:line-through;}
+  .aval-input{width:90px;height:32px;border:1px solid var(--border);border-radius:6px;padding:0 8px;font-family:var(--mono);font-size:13px;color:var(--text);background:var(--bg);text-align:right;}
+  .aval-input:focus{outline:none;border-color:var(--text);}
+  .aval-input:disabled{opacity:.4;}
+  .adel{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 0 0 6px;line-height:1;}
+  .adel:hover{color:var(--danger);}
+
+  .save-notice{font-size:11px;color:var(--accent);text-align:center;margin-top:10px;opacity:0;transition:opacity .3s;}
+  .save-notice.show{opacity:1;}
+
+  /* loading */
+  .loading{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px;}
+  .spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--text);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .sync-indicator{font-size:10px;color:#a0a09a;font-family:var(--mono);text-align:right;padding:4px 20px 0;}
+  .sync-indicator.syncing{color:#f5c842;}
+  .sync-indicator.error{color:#e8706a;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <div class="header-title">Controle de gastos</div>
+      <div class="header-month" id="hdr-month">—</div>
+    </div>
+    <div class="htr">
+      <div class="htrl">Total / Meta</div>
+      <div class="htrv" id="hdr-total">—</div>
+    </div>
+  </div>
+  <div class="gbar-wrap"><div class="gbar-fill" id="gbar" style="width:0%"></div></div>
+  <div class="gbar-lbl"><span id="gpct">0%</span><span id="grem">—</span></div>
+  <div class="tabs">
+    <div class="tab active" data-page="page-gastos">Gastos</div>
+    <div class="tab" data-page="page-parc">Parcelamentos</div>
+    <div class="tab" data-page="page-assin">Assinaturas</div>
+  </div>
+</header>
+<div class="sync-indicator" id="sync-ind">—</div>
+
+<div class="page active" id="page-gastos">
+<main>
+  <div class="slabel">Resumo</div>
+  <div class="summary-card">
+    <div><div class="si-label">Gasto até agora</div><div class="si-val" id="sum-spent">—</div></div>
+    <div><div class="si-label">Meta mensal</div><div class="si-val">R$ 7.300</div></div>
+    <div><div class="si-label">Fixo (parcelas+assin.)</div><div class="si-val" id="sum-fixo">—</div></div>
+    <div><div class="si-label">Margem variável</div><div class="si-val" id="sum-margin">—</div></div>
+  </div>
+  <div class="slabel">Fixos</div>
+  <div id="fixed-cats"></div>
+  <div class="slabel">Variáveis</div>
+  <div id="var-cats"><div class="loading"><div class="spinner"></div>Carregando…</div></div>
+  <div class="slabel">Fechar fatura</div>
+  <button class="fechar-btn" id="fechar-btn">Fechar fatura e avançar mês</button>
+  <div class="fechar-hint">Ao fechar: lançamentos arquivados, parcelas encerradas removidas, mês avança.</div>
+</main>
+</div>
+
+<div class="page" id="page-parc">
+<main>
+  <div class="slabel">Parcelas ativas</div>
+  <button class="add-btn" id="add-parc-btn">+ Adicionar parcelamento manualmente</button>
+  <div id="parc-list"><div class="loading"><div class="spinner"></div>Carregando…</div></div>
+  <div class="save-notice" id="sn-parc">Salvo</div>
+</main>
+</div>
+
+<div class="page" id="page-assin">
+<main>
+  <div class="slabel">Assinaturas ativas</div>
+  <div id="assin-list"><div class="loading"><div class="spinner"></div>Carregando…</div></div>
+  <button class="add-btn" id="add-assin-btn">+ Adicionar assinatura</button>
+  <div class="save-notice" id="sn-assin">Salvo</div>
+</main>
+</div>
+
+<button class="fab" id="fab-btn">+</button>
+
+<!-- MODAL GASTO -->
+<div class="overlay" id="modal-gasto">
+<div class="modal">
+  <div class="modal-title">Registrar gasto <button class="mclose" data-modal="modal-gasto">×</button></div>
+  <div class="field"><label>Categoria</label>
+    <select id="inp-cat">
+      <option value="supermercado">🛒 Supermercado</option>
+      <option value="alim-trabalho">💼 Alimentação trabalho</option>
+      <option value="restaurantes">🍽 Restaurantes e lazer</option>
+      <option value="uber">🚗 Uber / transporte</option>
+      <option value="online">📦 Compras</option>
+      <option value="outros">💡 Outros</option>
+    </select>
+  </div>
+  <div class="field"><label>Descrição</label><input type="text" id="inp-desc" placeholder="Ex: Zona Sul, Amazon, Uber…"></div>
+  <div class="field"><label>Forma de pagamento</label>
+    <div class="pgto-toggle">
+      <button class="pgto-btn active" id="btn-avista">À vista</button>
+      <button class="pgto-btn" id="btn-parcelado">Parcelado</button>
+    </div>
+  </div>
+  <div id="avista-fields">
+    <div class="field"><label>Valor (R$)</label><input type="number" id="inp-val-av" placeholder="0,00" min="0" step="0.01" inputmode="decimal"></div>
+    <div class="field"><label>Data</label><input type="date" id="inp-date-av"></div>
+  </div>
+  <div class="parc-fields" id="parc-fields">
+    <div class="field"><label>Valor total da compra (R$)</label><input type="number" id="inp-total-parc" placeholder="0,00" min="0" step="0.01" inputmode="decimal"></div>
+    <div class="field"><label>Número de parcelas</label><input type="number" id="inp-nparc" placeholder="Ex: 6" min="2" step="1" inputmode="numeric"></div>
+    <div class="field"><label>Parcela atual (qual cai neste mês)</label><input type="number" id="inp-parc-atual" placeholder="Ex: 1" min="1" step="1" inputmode="numeric" value="1"></div>
+    <div class="parc-preview" id="parc-preview"></div>
+    <div class="field"><label>Data</label><input type="date" id="inp-date-parc"></div>
+  </div>
+  <button class="btn-ok" id="btn-save-gasto">Registrar</button>
+</div>
+</div>
+
+<!-- MODAL PARCELA MANUAL -->
+<div class="overlay" id="modal-parc">
+<div class="modal">
+  <div class="modal-title">Nova parcela (manual) <button class="mclose" data-modal="modal-parc">×</button></div>
+  <div class="field"><label>Descrição</label><input type="text" id="pm-desc" placeholder="Ex: Latam Air…"></div>
+  <div class="field"><label>Categoria</label>
+    <select id="pm-cat">
+      <option value="online">📦 Compras</option>
+      <option value="supermercado">🛒 Supermercado</option>
+      <option value="alim-trabalho">💼 Alimentação trabalho</option>
+      <option value="restaurantes">🍽 Restaurantes e lazer</option>
+      <option value="uber">🚗 Uber / transporte</option>
+      <option value="outros">💡 Outros</option>
+    </select>
+  </div>
+  <div class="field"><label>Valor da parcela (R$)</label><input type="number" id="pm-val" placeholder="0,00" min="0" step="0.01" inputmode="decimal"></div>
+  <div class="field"><label>Parcela atual</label><input type="number" id="pm-atual" placeholder="Ex: 3" min="1" step="1" inputmode="numeric"></div>
+  <div class="field"><label>Total de parcelas</label><input type="number" id="pm-total" placeholder="Ex: 9" min="1" step="1" inputmode="numeric"></div>
+  <button class="btn-ok" id="btn-save-pm">Adicionar</button>
+</div>
+</div>
+
+<!-- MODAL ASSINATURA -->
+<div class="overlay" id="modal-assin">
+<div class="modal">
+  <div class="modal-title">Nova assinatura <button class="mclose" data-modal="modal-assin">×</button></div>
+  <div class="field"><label>Nome</label><input type="text" id="assin-nome" placeholder="Ex: Disney+…"></div>
+  <div class="field"><label>Valor (R$)</label><input type="number" id="assin-valor" placeholder="0,00" min="0" step="0.01" inputmode="decimal"></div>
+  <button class="btn-ok" id="btn-save-assin">Adicionar</button>
+</div>
+</div>
+
+<!-- MODAL FECHAR -->
+<div class="overlay" id="modal-fechar">
+<div class="modal">
+  <div class="modal-title">Confirmar fechamento <button class="mclose" data-modal="modal-fechar">×</button></div>
+  <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px;" id="fechar-preview">—</p>
+  <button class="btn-ok" id="btn-confirmar-fechar">Confirmar e avançar mês</button>
+</div>
+</div>
+
+<script>
+const SUPA_URL = 'https://nqofgpubfmbfahcheihb.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xb2ZncHViZm1iZmFoY2hlaWhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyODIyMzksImV4cCI6MjA5NDg1ODIzOX0.l1fd847-f9e2BUa2c9JOKZO2hc0qfF2KiBamJAnIi_Q';
+const HEADERS = {'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
+
+const META = 7300;
+const CATS_VAR = [
+  {id:'supermercado', label:'Supermercado',         icon:'🛒',color:'#2d5a3d',bg:'#e8f0eb',meta:1300},
+  {id:'alim-trabalho',label:'Alimentação trabalho', icon:'💼',color:'#185FA5',bg:'#e6f1fb',meta:400},
+  {id:'restaurantes', label:'Restaurantes e lazer', icon:'🍽',color:'#7a5c00',bg:'#fdf4dc',meta:800},
+  {id:'uber',         label:'Uber / transporte',    icon:'🚗',color:'#534AB7',bg:'#eeedfe',meta:400},
+  {id:'online',       label:'Compras',              icon:'📦',color:'#5a2d82',bg:'#f0eafa',meta:250},
+  {id:'outros',       label:'Outros',               icon:'💡',color:'#5f5e5a',bg:'#f1efe8',meta:500},
+];
+
+const DEFAULT_ASSIN = [
+  {id:'a1',nome:'Claude.ai',     valor:110,  ativa:true},
+  {id:'a2',nome:'Academia',      valor:120,  ativa:true},
+  {id:'a3',nome:'JusBrasil',     valor:58.9, ativa:true},
+  {id:'a4',nome:'Netflix',       valor:59.9, ativa:true},
+  {id:'a5',nome:'LinkedIn',      valor:34.99,ativa:true},
+  {id:'a6',nome:'Spotify',       valor:31.9, ativa:true},
+  {id:'a7',nome:'Apple',         valor:14.9, ativa:true},
+  {id:'a8',nome:'Amazon Prime',  valor:10,   ativa:true},
+  {id:'a9',nome:'YouTube Member',valor:4.99, ativa:true},
+];
+
+const DEFAULT_PARC = [
+  {id:'p1', cat:'outros', descricao:'Decolar',           val:546.29,atual:8, total:12},
+  {id:'p2', cat:'outros', descricao:'Latam Air',          val:669.57,atual:2, total:4},
+  {id:'p3', cat:'outros', descricao:'Electrolux',         val:166.55,atual:4, total:9},
+  {id:'p4', cat:'outros', descricao:'Centauro',           val:103.74,atual:4, total:8},
+  {id:'p5', cat:'online', descricao:'Carrefour.com',      val:107.14,atual:3, total:7},
+  {id:'p6', cat:'outros', descricao:'Decathlon',          val:104.38,atual:3, total:9},
+  {id:'p7', cat:'outros', descricao:'Globo Combo',        val:59.90, atual:2, total:12},
+  {id:'p8', cat:'online', descricao:'Panini Brasil',      val:129.89,atual:1, total:4},
+  {id:'p9', cat:'online', descricao:'Amazon BR (1/4)',    val:100.80,atual:1, total:4},
+  {id:'p10',cat:'online', descricao:'StripMe Clothing A', val:58.44, atual:3, total:4},
+  {id:'p11',cat:'online', descricao:'StripMe Clothing B', val:83.53, atual:3, total:4},
+  {id:'p12',cat:'outros', descricao:'Lesen Livrari',      val:30.77, atual:3, total:4},
+  {id:'p13',cat:'online', descricao:'Amazon BR (2/5) A',  val:32.95, atual:2, total:5},
+  {id:'p14',cat:'online', descricao:'Amazon BR (2/5) B',  val:30.15, atual:2, total:5},
+  {id:'p15',cat:'online', descricao:'Amazon BR (2/4)',    val:30.17, atual:2, total:4},
+  {id:'p16',cat:'online', descricao:'Amazon BR (2/6)',    val:36.65, atual:2, total:6},
+  {id:'p17',cat:'online', descricao:'Amazon BR (3/4)',    val:31.98, atual:3, total:4},
+  {id:'p18',cat:'online', descricao:'Amazon BR (4/6)',    val:44.98, atual:4, total:6},
+  {id:'p19',cat:'outros', descricao:'Aviator',            val:162.83,atual:5, total:6},
+  {id:'p20',cat:'online', descricao:'Amazon BR (5/6)',    val:55.37, atual:5, total:6},
+  {id:'p21',cat:'online', descricao:'Amazon BR (5/10)',   val:59.90, atual:5, total:10},
+  {id:'p22',cat:'online', descricao:'Amazon BR (7/9)',    val:53.33, atual:7, total:9},
+];
+
+// STATE
+let state = { entries:[], parcelas:[], assinaturas:[], month:'' };
+let initialized = false;
+
+function ymNow(){const n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');}
+function ymLabel(ym){if(!ym)return'—';const[y,m]=ym.split('-');return new Date(+y,+m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});}
+function ymNext(ym){const[y,m]=ym.split('-');const d=new Date(+y,+m,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function fmt(v){return'R$ '+Math.round(v).toLocaleString('pt-BR');}
+function fmtD(v){return'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+
+function setSyncInd(status,txt){
+  const el=document.getElementById('sync-ind');
+  el.className='sync-indicator'+(status?' '+status:'');
+  el.textContent=txt;
+}
+
+// SUPABASE API
+async function sbGet(table, params=''){
+  const r=await fetch(`${SUPA_URL}/rest/v1/${table}?${params}`,{headers:{...HEADERS,'Prefer':'return=representation'}});
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+async function sbInsert(table, data){
+  const r=await fetch(`${SUPA_URL}/rest/v1/${table}`,{method:'POST',headers:{...HEADERS,'Prefer':'return=representation'},body:JSON.stringify(data)});
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+async function sbUpdate(table, id, data){
+  const r=await fetch(`${SUPA_URL}/rest/v1/${table}?id=eq.${id}`,{method:'PATCH',headers:{...HEADERS,'Prefer':'return=representation'},body:JSON.stringify(data)});
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+async function sbDelete(table, id){
+  const r=await fetch(`${SUPA_URL}/rest/v1/${table}?id=eq.${id}`,{method:'DELETE',headers:HEADERS});
+  if(!r.ok)throw new Error(await r.text());
+}
+async function sbUpsert(table, data){
+  const r=await fetch(`${SUPA_URL}/rest/v1/${table}`,{method:'POST',headers:{...HEADERS,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(data)});
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+
+// INIT — carrega tudo do Supabase, popula defaults se vazio
+async function init(){
+  setSyncInd('syncing','sincronizando…');
+  try {
+    // mês corrente
+    const cfg = await sbGet('gc_config','key=eq.current_month');
+    if(cfg.length){
+      state.month = cfg[0].value;
+    } else {
+      state.month = ymNow();
+      await sbUpsert('gc_config',{key:'current_month',value:state.month});
+    }
+
+    // parcelas
+    const parc = await sbGet('gc_parcelas','order=id');
+    if(parc.length){
+      state.parcelas = parc;
+    } else {
+      await sbInsert('gc_parcelas', DEFAULT_PARC);
+      state.parcelas = DEFAULT_PARC;
+    }
+
+    // assinaturas
+    const assin = await sbGet('gc_assinaturas','order=id');
+    if(assin.length){
+      state.assinaturas = assin;
+    } else {
+      await sbInsert('gc_assinaturas', DEFAULT_ASSIN);
+      state.assinaturas = DEFAULT_ASSIN;
+    }
+
+    // entries do mês
+    state.entries = await sbGet('gc_entries',`month=eq.${state.month}&order=date.desc`);
+
+    initialized = true;
+    setSyncInd('','sincronizado');
+    renderGastos();
+  } catch(e){
+    setSyncInd('error','erro de conexão');
+    console.error(e);
+  }
+}
+
+// COMPUTED
+function totalParc(){return state.parcelas.reduce((s,p)=>s+Number(p.val),0);}
+function totalAssin(){return state.assinaturas.filter(a=>a.ativa).reduce((s,a)=>s+Number(a.valor),0);}
+function totalFixo(){return totalParc()+totalAssin();}
+function totalVar(){return state.entries.reduce((s,e)=>s+Number(e.val),0);}
+
+function renderHeader(){
+  const tg=totalFixo()+totalVar();
+  const pct=Math.min(100,Math.round(tg/META*100));
+  const rem=META-tg;
+  document.getElementById('hdr-month').textContent=ymLabel(state.month);
+  const el=document.getElementById('hdr-total');
+  el.textContent=fmt(tg)+' / '+fmt(META);
+  el.className='htrv '+(pct>=100?'over':pct>=85?'warn':'ok');
+  const bar=document.getElementById('gbar');
+  bar.style.width=pct+'%';
+  bar.className='gbar-fill '+(pct>=100?'over':pct>=85?'warn':'');
+  document.getElementById('gpct').textContent=pct+'%';
+  document.getElementById('grem').textContent=rem>=0?fmt(rem)+' restam':'− '+fmt(Math.abs(rem))+' acima da meta';
+}
+
+function makeCatCard(icon,bg,label,color,spent,meta,remText,remClass,entries,catId){
+  const pct=Math.min(110,meta?Math.round(spent/meta*100):100);
+  const div=document.createElement('div');
+  div.className='cat-card';
+  const hasE=entries&&entries.length>0;
+  div.innerHTML=`
+    <div class="cat-header">
+      <div class="cat-name"><div class="cat-icon" style="background:${bg}">${icon}</div>${label}</div>
+      <div class="cat-amounts">
+        <div class="cat-spent" style="color:${color}">${fmtD(spent)}</div>
+        ${meta?`<div class="cat-limit">meta ${fmt(meta)}</div>`:''}
+      </div>
+    </div>
+    <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    <div class="cat-rem ${remClass}">${remText}</div>
+    ${hasE?`<span class="etoggle" data-cat="${catId}">${entries.length} item${entries.length>1?'s':''} — ver</span>`:''}
+    ${hasE?`<div class="elist" id="elist-${catId}">${entries.map(e=>`
+      <div class="eitem">
+        <span class="edesc">${e.descricao||'—'}</span>
+        ${e.parc_info?`<span class="ebadge">${e.parc_info}</span>`:''}
+        <span class="edate">${e.date?e.date.slice(8)+'/'+e.date.slice(5,7):''}</span>
+        <span class="eval">${fmtD(Number(e.val))}</span>
+        ${!e._fixed?`<button class="edel" data-id="${e.id}">×</button>`:'<span style="width:24px"></span>'}
+      </div>`).join('')}</div>`:''}
+  `;
+  return div;
+}
+
+function renderGastos(){
+  if(!initialized)return;
+  renderHeader();
+  const tf=totalFixo();
+  document.getElementById('sum-spent').textContent=fmt(totalFixo()+totalVar());
+  document.getElementById('sum-fixo').textContent=fmt(tf);
+  document.getElementById('sum-margin').textContent=fmt(META-tf);
+
+  // fixos
+  const fc=document.getElementById('fixed-cats');
+  fc.innerHTML='';
+  const tp=totalParc();
+  const parcItems=state.parcelas.map(p=>({id:'fx-'+p.id,descricao:p.descricao,val:p.val,date:'',parc_info:`${p.atual}/${p.total}`,_fixed:true}));
+  fc.appendChild(makeCatCard('📋','#e6f1fb','Parcelamentos','#185FA5',tp,0,
+    state.parcelas.length+' parcelas · '+fmt(tp)+'/mês','ok',parcItems,'parcelamentos'));
+  const ta=totalAssin();
+  const assinItems=state.assinaturas.filter(a=>a.ativa).map(a=>({id:'fx-'+a.id,descricao:a.nome,val:a.valor,date:'',parc_info:'',_fixed:true}));
+  fc.appendChild(makeCatCard('🔁','#eeedfe','Assinaturas','#534AB7',ta,0,
+    state.assinaturas.filter(a=>a.ativa).length+' ativas · '+fmt(ta)+'/mês','ok',assinItems,'assinaturas'));
+
+  // variáveis
+  const vc=document.getElementById('var-cats');
+  vc.innerHTML='';
+  CATS_VAR.forEach(cat=>{
+    const avista=state.entries.filter(e=>e.cat===cat.id);
+    const parcCat=state.parcelas.filter(p=>p.cat===cat.id).map(p=>({
+      id:'fx-'+p.id,descricao:p.descricao,val:p.val,date:'',parc_info:`${p.atual}/${p.total}`,_fixed:true
+    }));
+    const all=[...avista,...parcCat];
+    const spent=all.reduce((s,e)=>s+Number(e.val),0);
+    const pct=Math.min(110,Math.round(spent/cat.meta*100));
+    const rem=cat.meta-spent;
+    const barColor=pct>=100?'#e8706a':pct>=80?'#f5c842':cat.color;
+    const remClass=rem<0?'danger':rem<cat.meta*.2?'warn':'ok';
+    const remText=rem>=0?fmt(rem)+' restam de '+fmt(cat.meta):'− '+fmt(Math.abs(rem))+' acima do limite';
+    vc.appendChild(makeCatCard(cat.icon,cat.bg,cat.label,barColor,spent,cat.meta,remText,remClass,all,cat.id));
+  });
+
+  // etoggle + edel
+  document.querySelectorAll('.etoggle').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const list=document.getElementById('elist-'+el.dataset.cat);
+      if(!list)return;
+      list.classList.toggle('open');
+      el.textContent=list.classList.contains('open')
+        ?el.textContent.replace('— ver','— ocultar')
+        :el.textContent.replace('— ocultar','— ver');
+    });
+  });
+  document.querySelectorAll('.edel').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      const id=btn.dataset.id;
+      if(id.startsWith('fx-'))return;
+      try{
+        setSyncInd('syncing','salvando…');
+        await sbDelete('gc_entries',id);
+        state.entries=state.entries.filter(e=>e.id!==id);
+        setSyncInd('','sincronizado');
+        renderGastos();
+      }catch(e){setSyncInd('error','erro ao deletar');}
+    });
+  });
+}
+
+async function renderParc(){
+  renderHeader();
+  const list=document.getElementById('parc-list');
+  if(!state.parcelas.length){list.innerHTML='<div style="padding:16px;font-size:13px;color:var(--muted)">Nenhuma parcela cadastrada.</div>';return;}
+  const catLabel={supermercado:'Supermercado','alim-trabalho':'Alim. trabalho',restaurantes:'Restaurantes',uber:'Transporte',online:'Compras',outros:'Outros'};
+  const card=document.createElement('div');
+  card.className='parc-card';
+  card.innerHTML=state.parcelas.map(p=>`
+    <div class="parc-row">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">${p.descricao}</div>
+        <div class="parc-sub">${catLabel[p.cat]||'Outros'} · ${p.atual}/${p.total} · ${fmtD(Number(p.val))}/mês</div>
+      </div>
+      <span class="parc-val">${fmtD(Number(p.val))}</span>
+      <button class="pdel" data-id="${p.id}">×</button>
+    </div>
+  `).join('');
+  list.innerHTML='';
+  list.appendChild(card);
+  list.querySelectorAll('.pdel').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      if(!confirm('Remover esta parcela?'))return;
+      try{
+        setSyncInd('syncing','salvando…');
+        await sbDelete('gc_parcelas',btn.dataset.id);
+        state.parcelas=state.parcelas.filter(p=>p.id!==btn.dataset.id);
+        setSyncInd('','sincronizado');
+        renderParc();renderGastos();notice('sn-parc');
+      }catch(e){setSyncInd('error','erro');}
+    });
+  });
+}
+
+async function renderAssin(){
+  renderHeader();
+  const list=document.getElementById('assin-list');
+  list.innerHTML='';
+  const card=document.createElement('div');
+  card.className='assin-card';
+  card.innerHTML=state.assinaturas.map(a=>`
+    <div class="assin-row">
+      <button class="atoggle ${a.ativa?'on':'off'}" data-id="${a.id}"></button>
+      <div style="flex:1"><div class="assin-name ${a.ativa?'':'off'}">${a.nome}</div></div>
+      <input class="aval-input" type="number" value="${Number(a.valor).toFixed(2)}" min="0" step="0.01" data-id="${a.id}" inputmode="decimal" ${!a.ativa?'disabled':''}>
+      <button class="adel" data-id="${a.id}">×</button>
+    </div>
+  `).join('');
+  list.appendChild(card);
+
+  list.querySelectorAll('.atoggle').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      const a=state.assinaturas.find(x=>x.id===btn.dataset.id);if(!a)return;
+      try{
+        setSyncInd('syncing','salvando…');
+        await sbUpdate('gc_assinaturas',a.id,{ativa:!a.ativa});
+        a.ativa=!a.ativa;
+        setSyncInd('','sincronizado');
+        renderAssin();renderGastos();notice('sn-assin');
+      }catch(e){setSyncInd('error','erro');}
+    });
+  });
+  list.querySelectorAll('.aval-input').forEach(inp=>{
+    inp.addEventListener('change',async()=>{
+      const v=parseFloat(inp.value);if(isNaN(v)||v<0)return;
+      const a=state.assinaturas.find(x=>x.id===inp.dataset.id);if(!a)return;
+      try{
+        setSyncInd('syncing','salvando…');
+        await sbUpdate('gc_assinaturas',a.id,{valor:v});
+        a.valor=v;
+        setSyncInd('','sincronizado');
+        renderGastos();notice('sn-assin');
+      }catch(e){setSyncInd('error','erro');}
+    });
+  });
+  list.querySelectorAll('.adel').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      if(!confirm('Remover esta assinatura?'))return;
+      try{
+        setSyncInd('syncing','salvando…');
+        await sbDelete('gc_assinaturas',btn.dataset.id);
+        state.assinaturas=state.assinaturas.filter(a=>a.id!==btn.dataset.id);
+        setSyncInd('','sincronizado');
+        renderAssin();renderGastos();notice('sn-assin');
+      }catch(e){setSyncInd('error','erro');}
+    });
+  });
+}
+
+function notice(id){const el=document.getElementById(id);el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1800);}
+
+// TABS
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.page).classList.add('active');
+    document.getElementById('fab-btn').classList.toggle('hidden',tab.dataset.page!=='page-gastos');
+    if(tab.dataset.page==='page-assin')renderAssin();
+    if(tab.dataset.page==='page-parc')renderParc();
+  });
+});
+
+// toggle à vista / parcelado
+let modoParc=false;
+document.getElementById('btn-avista').addEventListener('click',()=>{
+  modoParc=false;
+  document.getElementById('btn-avista').classList.add('active');
+  document.getElementById('btn-parcelado').classList.remove('active');
+  document.getElementById('avista-fields').style.display='';
+  document.getElementById('parc-fields').classList.remove('open');
+});
+document.getElementById('btn-parcelado').addEventListener('click',()=>{
+  modoParc=true;
+  document.getElementById('btn-parcelado').classList.add('active');
+  document.getElementById('btn-avista').classList.remove('active');
+  document.getElementById('avista-fields').style.display='none';
+  document.getElementById('parc-fields').classList.add('open');
+});
+function updateParcPreview(){
+  const total=parseFloat(document.getElementById('inp-total-parc').value);
+  const n=parseInt(document.getElementById('inp-nparc').value);
+  const el=document.getElementById('parc-preview');
+  if(total>0&&n>1){el.textContent=fmtD(Math.round(total/n*100)/100)+'/mês × '+n+' parcelas';}
+  else{el.textContent='';}
+}
+document.getElementById('inp-total-parc').addEventListener('input',updateParcPreview);
+document.getElementById('inp-nparc').addEventListener('input',updateParcPreview);
+
+// SALVAR GASTO
+document.getElementById('btn-save-gasto').addEventListener('click',async()=>{
+  const cat=document.getElementById('inp-cat').value;
+  const descricao=document.getElementById('inp-desc').value.trim();
+  if(!descricao){document.getElementById('inp-desc').focus();return;}
+  const btn=document.getElementById('btn-save-gasto');
+  btn.disabled=true;btn.textContent='Salvando…';
+  try{
+    if(!modoParc){
+      const val=parseFloat(document.getElementById('inp-val-av').value);
+      const date=document.getElementById('inp-date-av').value;
+      if(!val||val<=0){btn.disabled=false;btn.textContent='Registrar';document.getElementById('inp-val-av').focus();return;}
+      setSyncInd('syncing','salvando…');
+      const entry={id:uid(),cat,descricao,val,date,month:state.month,is_parcela:false,parc_info:''};
+      const [saved]=await sbInsert('gc_entries',entry);
+      state.entries.unshift(saved||entry);
+    } else {
+      const total=parseFloat(document.getElementById('inp-total-parc').value);
+      const n=parseInt(document.getElementById('inp-nparc').value);
+      const atual=parseInt(document.getElementById('inp-parc-atual').value)||1;
+      if(!total||total<=0||!n||n<2){btn.disabled=false;btn.textContent='Registrar';return;}
+      const valParc=Math.round(total/n*100)/100;
+      setSyncInd('syncing','salvando…');
+      const parc={id:uid(),cat,descricao,val:valParc,atual,total:n};
+      const [saved]=await sbInsert('gc_parcelas',parc);
+      state.parcelas.push(saved||parc);
+    }
+    setSyncInd('','sincronizado');
+    document.getElementById('modal-gasto').classList.remove('open');
+    renderGastos();
+  }catch(e){setSyncInd('error','erro ao salvar');}
+  btn.disabled=false;btn.textContent='Registrar';
+});
+
+// FECHAR FATURA
+document.getElementById('fechar-btn').addEventListener('click',()=>{
+  const enc=state.parcelas.filter(p=>p.atual>=p.total);
+  const cont=state.parcelas.filter(p=>p.atual<p.total);
+  const nm=ymNext(state.month);
+  let txt=`Avançar para <strong>${ymLabel(nm)}</strong>.<br><br>`;
+  if(enc.length)txt+=`Parcelas que encerram (${enc.length}):<br>${enc.map(p=>`• ${p.descricao} (${p.atual}/${p.total})`).join('<br>')}<br><br>`;
+  txt+=`Parcelas que continuam: ${cont.length}<br>Assinaturas ativas: ${state.assinaturas.filter(a=>a.ativa).length}`;
+  document.getElementById('fechar-preview').innerHTML=txt;
+  document.getElementById('modal-fechar').classList.add('open');
+});
+
+document.getElementById('btn-confirmar-fechar').addEventListener('click',async()=>{
+  const btn=document.getElementById('btn-confirmar-fechar');
+  btn.disabled=true;btn.textContent='Processando…';
+  setSyncInd('syncing','fechando fatura…');
+  try{
+    // remove encerradas
+    const enc=state.parcelas.filter(p=>p.atual>=p.total);
+    for(const p of enc) await sbDelete('gc_parcelas',p.id);
+    // avança restantes
+    const cont=state.parcelas.filter(p=>p.atual<p.total);
+    for(const p of cont) await sbUpdate('gc_parcelas',p.id,{atual:p.atual+1});
+    state.parcelas=cont.map(p=>({...p,atual:p.atual+1}));
+    // avança mês
+    const nm=ymNext(state.month);
+    state.month=nm;
+    await sbUpsert('gc_config',{key:'current_month',value:nm});
+    // carrega entries do novo mês
+    state.entries=await sbGet('gc_entries',`month=eq.${nm}&order=date.desc`);
+    setSyncInd('','sincronizado');
+    document.getElementById('modal-fechar').classList.remove('open');
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelector('[data-page="page-gastos"]').classList.add('active');
+    document.getElementById('page-gastos').classList.add('active');
+    document.getElementById('fab-btn').classList.remove('hidden');
+    renderGastos();
+  }catch(e){setSyncInd('error','erro ao fechar fatura');}
+  btn.disabled=false;btn.textContent='Confirmar e avançar mês';
+});
+
+// PARCELA MANUAL
+document.getElementById('add-parc-btn').addEventListener('click',()=>{
+  ['pm-desc','pm-val','pm-atual','pm-total'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('modal-parc').classList.add('open');
+  setTimeout(()=>document.getElementById('pm-desc').focus(),250);
+});
+document.getElementById('btn-save-pm').addEventListener('click',async()=>{
+  const descricao=document.getElementById('pm-desc').value.trim();
+  const cat=document.getElementById('pm-cat').value;
+  const val=parseFloat(document.getElementById('pm-val').value);
+  const atual=parseInt(document.getElementById('pm-atual').value);
+  const total=parseInt(document.getElementById('pm-total').value);
+  if(!descricao||!val||!atual||!total)return;
+  const btn=document.getElementById('btn-save-pm');
+  btn.disabled=true;
+  try{
+    setSyncInd('syncing','salvando…');
+    const parc={id:uid(),cat,descricao,val,atual,total};
+    const [saved]=await sbInsert('gc_parcelas',parc);
+    state.parcelas.push(saved||parc);
+    setSyncInd('','sincronizado');
+    document.getElementById('modal-parc').classList.remove('open');
+    renderParc();renderGastos();notice('sn-parc');
+  }catch(e){setSyncInd('error','erro');}
+  btn.disabled=false;
+});
+
+// ASSINATURA
+document.getElementById('add-assin-btn').addEventListener('click',()=>{
+  document.getElementById('assin-nome').value='';document.getElementById('assin-valor').value='';
+  document.getElementById('modal-assin').classList.add('open');
+  setTimeout(()=>document.getElementById('assin-nome').focus(),250);
+});
+document.getElementById('btn-save-assin').addEventListener('click',async()=>{
+  const nome=document.getElementById('assin-nome').value.trim();
+  const valor=parseFloat(document.getElementById('assin-valor').value);
+  if(!nome||!valor||valor<=0)return;
+  const btn=document.getElementById('btn-save-assin');btn.disabled=true;
+  try{
+    setSyncInd('syncing','salvando…');
+    const assin={id:uid(),nome,valor,ativa:true};
+    const [saved]=await sbInsert('gc_assinaturas',assin);
+    state.assinaturas.push(saved||assin);
+    setSyncInd('','sincronizado');
+    document.getElementById('modal-assin').classList.remove('open');
+    renderAssin();renderGastos();notice('sn-assin');
+  }catch(e){setSyncInd('error','erro');}
+  btn.disabled=false;
+});
+
+// FAB
+document.getElementById('fab-btn').addEventListener('click',()=>{
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById('inp-date-av').value=today;
+  document.getElementById('inp-date-parc').value=today;
+  ['inp-desc','inp-val-av','inp-total-parc','inp-nparc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('inp-parc-atual').value='1';
+  document.getElementById('parc-preview').textContent='';
+  modoParc=false;
+  document.getElementById('btn-avista').classList.add('active');
+  document.getElementById('btn-parcelado').classList.remove('active');
+  document.getElementById('avista-fields').style.display='';
+  document.getElementById('parc-fields').classList.remove('open');
+  document.getElementById('modal-gasto').classList.add('open');
+  setTimeout(()=>document.getElementById('inp-desc').focus(),250);
+});
+
+// fechar modais
+document.querySelectorAll('.mclose').forEach(btn=>{
+  btn.addEventListener('click',()=>document.getElementById(btn.dataset.modal).classList.remove('open'));
+});
+document.querySelectorAll('.overlay').forEach(ov=>{
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('open');});
+});
+
+init();
+</script>
+</body>
+</html>
